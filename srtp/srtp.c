@@ -4120,6 +4120,8 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
     if (*pkt_octet_len < 0)
         return srtp_err_status_bad_param;
 
+    printf("[srtp_unprotect_rtcp] start \n");
+
     /*
      * check that the length value is sane; we'll check again once we
      * know the tag length, but we at least want to know that it is
@@ -4137,6 +4139,9 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
      * that key has just started up
      */
     stream = srtp_get_stream(ctx, hdr->ssrc);
+    
+    printf("[srtp_unprotect_rtcp] srtp_get_stream: %p \n", stream);
+
     if (stream == NULL) {
         if (ctx->stream_template != NULL) {
             stream = ctx->stream_template;
@@ -4284,7 +4289,7 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
 
         iv.v32[0] = 0;
         iv.v32[1] = hdr->ssrc; /* still in network order! */
-        iv.v32[2] = htonl(seq_num >> 16);
+        iv.v32[2] = htonl(seq_num >> 16); // ROC ??
         iv.v32[3] = htonl(seq_num << 16);
         status = srtp_cipher_set_iv(session_keys->rtcp_cipher, (uint8_t *)&iv,
                                     srtp_direction_decrypt);
@@ -4317,6 +4322,17 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
     /* compare the tag just computed with the one in the packet */
     debug_print(mod_srtp, "srtcp tag from packet:    %s",
                 srtp_octet_string_hex_string(auth_tag, tag_len));
+
+    printf("[srtp_unprotect_rtcp] MAC real: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x \n", 
+        auth_tag[0], auth_tag[1], auth_tag[2], auth_tag[3], auth_tag[4], 
+        auth_tag[5], auth_tag[6], auth_tag[7], auth_tag[8], auth_tag[9]
+    );
+
+    printf("[srtp_unprotect_rtcp] MAC comp: 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x 0x%x \n", 
+        tmp_tag[0], tmp_tag[1], tmp_tag[2], tmp_tag[3], tmp_tag[4], 
+        tmp_tag[5], tmp_tag[6], tmp_tag[7], tmp_tag[8], tmp_tag[9]
+    );
+
     if (octet_string_is_eq(tmp_tag, auth_tag, tag_len))
         return srtp_err_status_auth_fail;
 
@@ -4336,10 +4352,28 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
 
     /* if we're decrypting, exor keystream into the message */
     if (enc_start) {
+        printf("[srtp_unprotect_rtcp] before srtp_cipher_decrypt: enc_octet_len = %u \n",
+            enc_octet_len
+        );
+
         status = srtp_cipher_decrypt(session_keys->rtcp_cipher,
                                      (uint8_t *)enc_start, &enc_octet_len);
         if (status)
             return srtp_err_status_cipher_fail;
+
+        // printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", *enc_start);
+        // printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", *(enc_start+1));
+        // printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", *(enc_start+2));
+        // printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", *(enc_start+3));
+        // printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", *(enc_start+4));
+        // printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", *(enc_start+5));
+
+        // printf("[srtp_unprotect_rtcp] after srtp_cipher_decrypt: \n");
+        // for(uint32_t i2 = 0, v2; i2 < enc_octet_len/4; i2 += 1) {
+        //     v2 = *(uint32_t*)(enc_start + i2);
+
+        //     printf("[srtp_unprotect_rtcp] decrypted: 0x%x\n", v2);
+        // }
     }
 
     /* decrease the packet length by the length of the auth tag and seq_num */
