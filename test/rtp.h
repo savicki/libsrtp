@@ -82,6 +82,11 @@ typedef struct {
     char body[RTP_MAX_BUF_LEN];
 } rtp_msg_t;
 
+typedef struct {
+    srtcp_hdr_t header;
+    char body[RTP_MAX_BUF_LEN];
+} rtcp_msg_t;
+
 typedef struct rtp_sender_ctx_t {
     rtp_msg_t message;
     int socket;

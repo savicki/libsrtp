@@ -4140,7 +4140,7 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
      */
     stream = srtp_get_stream(ctx, hdr->ssrc);
     
-    printf("[srtp_unprotect_rtcp] srtp_get_stream: %p \n", stream);
+    printf("[srtp_unprotect_rtcp] srtp_get_stream %p for SSRC: 0x%x \n", stream, ntohl(hdr->ssrc));
 
     if (stream == NULL) {
         if (ctx->stream_template != NULL) {
@@ -4167,10 +4167,34 @@ srtp_err_status_t srtp_unprotect_rtcp_mki(srtp_t ctx,
                         "srtcp using provisional stream (SSRC: 0x%08x)",
                         ntohl(hdr->ssrc));
         } else {
+
             /* no template stream, so we return an error */
-            return srtp_err_status_no_ctx;
+            //return srtp_err_status_no_ctx;
+
+            srtp_stream_ctx_t *new_stream;
+
+            /*
+             * allocate and initialize a new stream
+             *
+             * note that we indicate failure if we can't allocate the new
+             * stream, and some implementations will want to not return
+             * failure here
+             */
+            status =
+                srtp_stream_clone(ctx->stream_list, hdr->ssrc, &new_stream);
+            if (status)
+                return status;
+
+            /* add new stream to the head of the stream_list */
+            new_stream->next = ctx->stream_list;
+            ctx->stream_list = new_stream;
+
+            printf("[srtp_unprotect_rtcp] new stream %p for new SSRC: 0x%x \n", new_stream, ntohl(hdr->ssrc));
+            stream = new_stream;
         }
     }
+
+    printf("[srtp_unprotect_rtcp] continue for stream %p with SSRC: 0x%x \n", stream, ntohl(hdr->ssrc));
 
     /*
      * Determine if MKI is being used and what session keys should be used
