@@ -9,7 +9,7 @@
  * $ ./test/rtp_decoder -a -t 10 -e 128 -b \
  *     aSBrbm93IGFsbCB5b3VyIGxpdHRsZSBzZWNyZXRz \
  *         < ~/marseillaise-srtp.pcap \
- *         | text2pcap -t "%M:%S." -u 10000,10000 - - \
+ *         | text2pcap -t "%s." -u 10000,10000 - - \
  *         > ./marseillaise-rtp.pcap
  *
  * There is also a different way of setting up key size and tag size
@@ -522,7 +522,6 @@ void rtp_decoder_handle_pkt(u_char *arg,
 {
     rtp_decoder_t dcdr = (rtp_decoder_t)arg;
     int pktsize;
-    struct timeval delta;
     int octets_recvd;
     srtp_err_status_t status;
     dcdr->frame_nr++;
@@ -564,9 +563,9 @@ void rtp_decoder_handle_pkt(u_char *arg,
         return;
     }
     fprintf(stdout, "[rtp_decoder_handle_pkt] %u => %u\n", pktsize, octets_recvd);
-    timersub(&hdr->ts, &dcdr->start_tv, &delta);
-    fprintf(stdout, "%02ld:%02ld.%06ld\n", delta.tv_sec / 60, delta.tv_sec % 60,
-            (long)delta.tv_usec);
+
+    fprintf(stdout, "%08ld.%06ld\n", (long)hdr->ts.tv_sec, (long)hdr->ts.tv_usec);
+
     hexdump(&dcdr->message.rtp, octets_recvd);
 }
 
